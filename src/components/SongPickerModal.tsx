@@ -3,6 +3,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { SAMPLE_TRACKS } from '../data/tracks';
 import type { Track } from '../types/poster';
 import { formatDurationMs, parseDurationInput } from '../utils/format';
+import { proxifyImageUrl } from '../utils/imageProxy';
 
 interface SongPickerModalProps {
   isOpen: boolean;
@@ -202,8 +203,9 @@ export function SongPickerModal({
                       }`}
                     >
                       <img
-                        src={track.coverUrl}
+                        src={proxifyImageUrl(track.coverUrl)}
                         alt={track.title}
+                        crossOrigin="anonymous"
                         referrerPolicy="no-referrer"
                         className="w-11 h-11 rounded-lg object-cover shrink-0 bg-[#0B0B0C]"
                       />

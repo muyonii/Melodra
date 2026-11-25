@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { PlaylistMeta, Template, Tokens, Track } from '../types/poster';
+import { proxifyImageUrl } from '../utils/imageProxy';
 import {
   computeMockupFrameGeometry,
   MOCKUP_SCENE_HEIGHT,
@@ -173,7 +174,7 @@ export function MockupSceneCanvas({
                 }}
               >
                 <img
-                  src={track.coverUrl}
+                  src={proxifyImageUrl(track.coverUrl)}
                   alt=""
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"

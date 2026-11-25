@@ -7,6 +7,7 @@ import {
   formatDurationMs,
   formatSeconds,
 } from '../src/utils/format';
+import { proxifyImageUrl } from '../src/utils/imageProxy';
 
 function EditorialVinylRender({
   track,
@@ -126,7 +127,7 @@ function EditorialVinylRender({
         >
           {!imgError && track.coverUrl ? (
             <img
-              src={track.coverUrl}
+              src={proxifyImageUrl(track.coverUrl)}
               alt={`${track.title} cover`}
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"

@@ -1,3 +1,4 @@
+import { proxifyImageUrl } from './imageProxy';
 import { buildSpotifyScannableUrl } from './musicSearch';
 
 /**
@@ -19,7 +20,7 @@ export function stripBlackBackgroundToAlpha(data: Uint8ClampedArray): void {
 }
 
 export function loadTransparentSpotifyCode(spotifyId: string): Promise<string> {
-  const url = buildSpotifyScannableUrl(spotifyId);
+  const url = proxifyImageUrl(buildSpotifyScannableUrl(spotifyId));
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';

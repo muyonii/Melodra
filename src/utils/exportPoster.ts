@@ -1,5 +1,6 @@
 import { toCanvas } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import { proxifyImageUrl } from './imageProxy';
 import {
   buildExportFilename,
   getExportPreset,
@@ -36,7 +37,7 @@ export async function measureCoverResolution(url: string): Promise<ImageResoluti
       });
     };
     img.onerror = () => resolve(null);
-    img.src = url;
+    img.src = proxifyImageUrl(url);
   });
 }
 

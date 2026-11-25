@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ScannableCodeSlot } from '../src/components/ScannableCodeSlot';
 import type { PosterRenderProps, Template } from '../src/types/poster';
 import { clampTimestamp, formatDurationMs, formatSeconds } from '../src/utils/format';
+import { proxifyImageUrl } from '../src/utils/imageProxy';
 
 function deriveReceiptMeta(title: string, artist: string) {
   const seedStr = `${title}-${artist}`;
@@ -176,7 +177,7 @@ function ReceiptRender({
             >
               {!imgError && track.coverUrl ? (
                 <img
-                  src={track.coverUrl}
+                  src={proxifyImageUrl(track.coverUrl)}
                   alt={`${track.title} cover`}
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"

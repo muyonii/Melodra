@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { templates } from '../../templates';
 import { MAX_PLAYLIST_TRACKS } from '../data/tracks';
 import type { PlaylistMeta, Template, Tokens, Track } from '../types/poster';
+import { proxifyImageUrl } from '../utils/imageProxy';
 import type { TokensByTemplate } from '../utils/tokenHistory';
 import { SearchBar } from './SearchBar';
 
@@ -112,7 +113,7 @@ export function PosterStage({
             className="inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-xl bg-[#151517] border border-white/[0.08] hover:border-white/[0.18] transition-all duration-200 max-w-[175px] sm:max-w-[220px] shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1DB954]"
           >
             <img
-              src={track.coverUrl}
+              src={proxifyImageUrl(track.coverUrl)}
               alt=""
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"

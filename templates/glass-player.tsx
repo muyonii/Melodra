@@ -7,6 +7,7 @@ import {
   formatDurationMs,
   formatSeconds,
 } from '../src/utils/format';
+import { proxifyImageUrl } from '../src/utils/imageProxy';
 
 function GlassPlayerRender({
   track,
@@ -53,7 +54,7 @@ function GlassPlayerRender({
       {/* 1. Blurred, scaled album cover background */}
       {!imgError && track.coverUrl ? (
         <img
-          src={track.coverUrl}
+          src={proxifyImageUrl(track.coverUrl)}
           alt=""
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
@@ -135,7 +136,7 @@ function GlassPlayerRender({
           >
             {!imgError && track.coverUrl ? (
               <img
-                src={track.coverUrl}
+                src={proxifyImageUrl(track.coverUrl)}
                 alt={`${track.title} album cover`}
                 crossOrigin="anonymous"
                 referrerPolicy="no-referrer"

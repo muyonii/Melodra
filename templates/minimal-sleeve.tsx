@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ScannableCodeSlot } from '../src/components/ScannableCodeSlot';
 import type { PosterRenderProps, Template } from '../src/types/poster';
 import { formatDurationMs } from '../src/utils/format';
+import { proxifyImageUrl } from '../src/utils/imageProxy';
 
 function MinimalSleeveRender({
   track,
@@ -51,7 +52,7 @@ function MinimalSleeveRender({
       >
         {!imgError && track.coverUrl ? (
           <img
-            src={track.coverUrl}
+            src={proxifyImageUrl(track.coverUrl)}
             alt={`${track.title} cover`}
             crossOrigin="anonymous"
             referrerPolicy="no-referrer"

@@ -1,4 +1,5 @@
 import { getColor, getPalette } from 'colorthief';
+import { proxifyImageUrl } from './imageProxy';
 
 export interface RgbTuple {
   r: number;
@@ -98,7 +99,7 @@ export async function extractCoverAutoTheme(coverUrl: string): Promise<AutoTheme
     return null;
   }
   try {
-    const img = await loadCorsImage(coverUrl);
+    const img = await loadCorsImage(proxifyImageUrl(coverUrl));
     const palette = await getPalette(img, { colorCount: 6 });
     if (palette && palette.length > 0) {
       return selectAutoThemeFromPalette(palette.map((c) => c.rgb()));

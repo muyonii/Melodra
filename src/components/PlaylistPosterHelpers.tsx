@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { proxifyImageUrl } from '../utils/imageProxy';
 
 interface CoverArtImageProps {
   src: string;
@@ -26,7 +27,7 @@ export function CoverArtImage({
   if (!failed && src) {
     return (
       <img
-        src={src}
+        src={proxifyImageUrl(src)}
         alt={alt}
         crossOrigin="anonymous"
         referrerPolicy="no-referrer"

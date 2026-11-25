@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type DragEvent } from 'react';
+import { proxifyImageUrl } from '../utils/imageProxy';
 
 interface ScannableCodeSlotProps {
   codeUrl?: string;
@@ -37,7 +38,7 @@ export function ScannableCodeSlot({
 
   if (codeUrl && !imgError) {
     const isTransparentSpotifyPng =
-      codeUrl.startsWith('data:image/png') || codeUrl.startsWith('https://scannables.scdn.co/');
+      codeUrl.startsWith('data:image/png') || codeUrl.includes('scannables.scdn.co');
     return (
       <div
         style={{
@@ -48,7 +49,7 @@ export function ScannableCodeSlot({
         }}
       >
         <img
-          src={codeUrl}
+          src={proxifyImageUrl(codeUrl)}
           alt="Spotify scannable code"
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"

@@ -71,6 +71,28 @@ export function mapItunesItemToSearchResult(
   };
 }
 
+export class ApiLookupError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'ApiLookupError';
+    this.status = status;
+  }
+}
+
+async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: string };
+    if (body?.error && typeof body.error === 'string') {
+      return body.error;
+    }
+  } catch {
+    // Ignore non-JSON error bodies
+  }
+  return fallback;
+}
+
 export async function searchItunesSongs(
   query: string,
   signal?: AbortSignal,
@@ -80,67 +102,58 @@ export async function searchItunesSongs(
     return [];
   }
 
-  const endpoint = `https://itunes.apple.com/search?term=${encodeURIComponent(
-    trimmed,
-  )}&entity=song&limit=6`;
-
+  const endpoint = `/api/search?q=${encodeURIComponent(trimmed)}`;
   const response = await fetch(endpoint, { signal });
   if (!response.ok) {
-    throw new Error(`iTunes search failed (${response.status})`);
+    const msg = await readApiErrorMessage(
+      response,
+      `Music search failed (${response.status})`,
+    );
+    throw new ApiLookupError(msg, response.status);
   }
 
-  const data = (await response.json()) as { results?: ItunesSearchItem[] };
-  const items = Array.isArray(data.results) ? data.results : [];
-  return items.slice(0, 6).map((item) => mapItunesItemToSearchResult(item));
+  const data = (await response.json()) as {
+    items?: SearchResultItem[];
+    tracks?: Track[];
+  };
+
+  if (Array.isArray(data.items)) {
+    return data.items.slice(0, 6);
+  }
+
+  if (Array.isArray(data.tracks)) {
+    return data.tracks.slice(0, 6).map((track, idx) => ({
+      id: `${track.title}-${track.artist}-${idx}`,
+      thumbUrl: track.coverUrl,
+      track,
+    }));
+  }
+
+  return [];
 }
 
 export async function resolveSpotifyTrackLink(
   trackId: string,
   signal?: AbortSignal,
 ): Promise<Track> {
-  const oembedRes = await fetch(buildSpotifyOEmbedUrl(trackId), { signal });
-  if (!oembedRes.ok) {
-    throw new Error('Spotify oEmbed unavailable');
-  }
+  const canonicalTrackUrl = `https://open.spotify.com/track/${trackId}`;
+  const endpoint = `/api/resolve-link?url=${encodeURIComponent(canonicalTrackUrl)}`;
 
-  const oembed = (await oembedRes.json()) as SpotifyOEmbedResponse;
-  const title = oembed.title?.trim();
-  if (!title) {
-    throw new Error('Spotify track title missing');
-  }
-
-  // Search iTunes using the resolved Spotify title to enrich artist, album, duration, and 3000px artwork
-  try {
-    const itunesRes = await fetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(title)}&entity=song&limit=6`,
-      { signal },
+  const response = await fetch(endpoint, { signal });
+  if (!response.ok) {
+    const msg = await readApiErrorMessage(
+      response,
+      `Spotify link resolution unavailable (${response.status})`,
     );
-    if (itunesRes.ok) {
-      const itunesJson = (await itunesRes.json()) as { results?: ItunesSearchItem[] };
-      const results = Array.isArray(itunesJson.results) ? itunesJson.results : [];
-      if (results.length > 0) {
-        const bestMatch =
-          results.find(
-            (r) => r.trackName?.trim().toLowerCase() === title.toLowerCase(),
-          ) ?? results[0];
-        return mapItunesItemToSearchResult(bestMatch, trackId).track;
-      }
-    }
-  } catch (err) {
-    if ((err as Error)?.name === 'AbortError') {
-      throw err;
-    }
-    // Fall back to oEmbed metadata while preserving spotifyId
+    throw new ApiLookupError(msg, response.status);
   }
 
-  return {
-    title,
-    artist: 'Spotify Track',
-    album: '',
-    coverUrl: oembed.thumbnail_url || '',
-    durationMs: 210000,
-    spotifyId: trackId,
-  };
+  const data = (await response.json()) as { track?: Track };
+  if (!data?.track?.title) {
+    throw new ApiLookupError('Resolved Spotify track metadata was incomplete.', 502);
+  }
+
+  return data.track;
 }
 
 export interface ParsedTrackLine {

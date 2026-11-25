@@ -1,15 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { proxifyImageUrl } from './imageProxy';
 import {
+  ApiLookupError,
   buildSpotifyOEmbedUrl,
   buildSpotifyScannableUrl,
   extractSpotifyTrackId,
   mapItunesItemToSearchResult,
   parseTrackListLine,
   resolveBulkTrackLines,
+  resolveSpotifyTrackLink,
+  searchItunesSongs,
   upgradeItunesArtworkUrl,
   type BulkLineResult,
 } from './musicSearch';
+
+test('proxifyImageUrl proxies external http(s) URLs and keeps local/data/blob URLs unchanged', () => {
+  assert.equal(
+    proxifyImageUrl('https://is1-ssl.mzstatic.com/image/thumb/cover.jpg'),
+    '/api/image-proxy?url=https%3A%2F%2Fis1-ssl.mzstatic.com%2Fimage%2Fthumb%2Fcover.jpg',
+  );
+  assert.equal(
+    proxifyImageUrl('/api/image-proxy?url=https%3A%2F%2Fi.scdn.co%2Fcover.jpg'),
+    '/api/image-proxy?url=https%3A%2F%2Fi.scdn.co%2Fcover.jpg',
+  );
+  assert.equal(proxifyImageUrl('/src/assets/images/cover.png'), '/src/assets/images/cover.png');
+  assert.equal(proxifyImageUrl('data:image/png;base64,abc'), 'data:image/png;base64,abc');
+  assert.equal(proxifyImageUrl('blob:https://example.com/123'), 'blob:https://example.com/123');
+  assert.equal(proxifyImageUrl(''), '');
+});
 
 test('extractSpotifyTrackId parses standard, intl, and query-param Spotify URLs', () => {
   assert.equal(
@@ -92,6 +111,75 @@ test('parseTrackListLine strips numbering/bullets and splits "Title - Artist"', 
   });
 });
 
+test('searchItunesSongs and resolveSpotifyTrackLink call /api endpoints and surface ApiLookupError', async () => {
+  const originalFetch = globalThis.fetch;
+  const calledUrls: string[] = [];
+
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calledUrls.push(url);
+
+    if (url.startsWith('/api/resolve-link')) {
+      return new Response(
+        JSON.stringify({
+          track: {
+            title: 'Midnight City',
+            artist: 'M83',
+            album: "Hurry Up, We're Dreaming",
+            coverUrl: 'https://is1-ssl.mzstatic.com/m83/3000x3000bb.jpg',
+            durationMs: 243000,
+            spotifyId: '4uLU6hMCjMI75M1A2tKUQC',
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
+
+    if (url.includes('ratelimit')) {
+      return new Response(JSON.stringify({ error: 'Rate limited' }), {
+        status: 429,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    return new Response(
+      JSON.stringify({
+        items: [
+          {
+            id: '101',
+            thumbUrl: 'https://is1-ssl.mzstatic.com/m83/100x100bb.jpg',
+            track: {
+              title: 'Midnight City',
+              artist: 'M83',
+              album: "Hurry Up, We're Dreaming",
+              coverUrl: 'https://is1-ssl.mzstatic.com/m83/3000x3000bb.jpg',
+              durationMs: 243000,
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const results = await searchItunesSongs('Midnight City');
+    assert.equal(results.length, 1);
+    assert.ok(calledUrls[0].startsWith('/api/search?q='));
+
+    const resolved = await resolveSpotifyTrackLink('4uLU6hMCjMI75M1A2tKUQC');
+    assert.equal(resolved.spotifyId, '4uLU6hMCjMI75M1A2tKUQC');
+    assert.ok(calledUrls[1].startsWith('/api/resolve-link?url='));
+
+    await assert.rejects(
+      () => searchItunesSongs('ratelimit'),
+      (err: unknown) => err instanceof ApiLookupError && err.status === 429,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('resolveBulkTrackLines resolves matches and reports not-found lines with progress', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input: string | URL | Request) => {
@@ -99,21 +187,24 @@ test('resolveBulkTrackLines resolves matches and reports not-found lines with pr
     if (url.includes('Midnight')) {
       return new Response(
         JSON.stringify({
-          results: [
+          items: [
             {
-              trackId: 101,
-              trackName: 'Midnight City',
-              artistName: 'M83',
-              collectionName: "Hurry Up, We're Dreaming",
-              artworkUrl100: 'https://example.com/m83/100x100bb.jpg',
-              trackTimeMillis: 243000,
+              id: '101',
+              thumbUrl: 'https://is1-ssl.mzstatic.com/m83/100x100bb.jpg',
+              track: {
+                title: 'Midnight City',
+                artist: 'M83',
+                album: "Hurry Up, We're Dreaming",
+                coverUrl: 'https://is1-ssl.mzstatic.com/m83/3000x3000bb.jpg',
+                durationMs: 243000,
+              },
             },
           ],
         }),
         { status: 200, headers: { 'content-type': 'application/json' } },
       );
     }
-    return new Response(JSON.stringify({ results: [] }), {
+    return new Response(JSON.stringify({ items: [], tracks: [] }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });
@@ -130,7 +221,10 @@ test('resolveBulkTrackLines resolves matches and reports not-found lines with pr
     assert.equal(resolved.length, 2);
     assert.equal(resolved[0].status, 'found');
     assert.equal(resolved[0].track?.title, 'Midnight City');
-    assert.equal(resolved[0].track?.coverUrl, 'https://example.com/m83/3000x3000bb.jpg');
+    assert.equal(
+      resolved[0].track?.coverUrl,
+      'https://is1-ssl.mzstatic.com/m83/3000x3000bb.jpg',
+    );
     assert.equal(resolved[1].status, 'not-found');
     assert.ok(progressEvents.some((ev) => ev.status === 'searching' && ev.lineNumber === 1));
     assert.ok(progressEvents.some((ev) => ev.status === 'found' && ev.lineNumber === 1));

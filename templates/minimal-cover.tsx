@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScannableCodeSlot } from '../src/components/ScannableCodeSlot';
 import type { PosterRenderProps, Template } from '../src/types/poster';
+import { proxifyImageUrl } from '../src/utils/imageProxy';
 
 function MinimalCoverRender({
   track,
@@ -65,7 +66,7 @@ function MinimalCoverRender({
         >
           {!imgError && track.coverUrl ? (
             <img
-              src={track.coverUrl}
+              src={proxifyImageUrl(track.coverUrl)}
               alt={`${track.title} album cover`}
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"

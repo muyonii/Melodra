@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MAX_PLAYLIST_TRACKS, MIN_PLAYLIST_TRACKS } from '../data/tracks';
 import type { PlaylistMeta, Track } from '../types/poster';
 import { formatDurationMs } from '../utils/format';
+import { proxifyImageUrl } from '../utils/imageProxy';
 import {
   parseTrackListLine,
   resolveBulkTrackLines,
@@ -465,7 +466,7 @@ export function TracksManager({
                 </span>
 
                 <img
-                  src={item.coverUrl}
+                  src={proxifyImageUrl(item.coverUrl)}
                   alt=""
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"

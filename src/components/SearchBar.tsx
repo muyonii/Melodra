@@ -8,7 +8,9 @@ import {
 } from 'react';
 import type { Track } from '../types/poster';
 import { formatDurationMs } from '../utils/format';
+import { proxifyImageUrl } from '../utils/imageProxy';
 import {
+  ApiLookupError,
   extractSpotifyTrackId,
   resolveSpotifyTrackLink,
   searchItunesSongs,
@@ -105,8 +107,11 @@ export function SearchBar({
           setIsLoading(false);
           setResolvingSpotify(false);
           setIsOpen(false);
+          const status = err instanceof ApiLookupError ? err.status : undefined;
           onNotify(
-            "Couldn't load that Spotify link. Try searching by song name instead.",
+            status === 429
+              ? 'Too many lookups right now. Wait a few seconds or choose a curated track.'
+              : "Couldn't load that Spotify link. Try searching or picking a curated track.",
             'error',
           );
         });
@@ -134,7 +139,13 @@ export function SearchBar({
           setIsLoading(false);
           setHasSearched(true);
           setResults([]);
-          onNotify('Search is temporarily unavailable. Please try again.', 'error');
+          const status = err instanceof ApiLookupError ? err.status : undefined;
+          onNotify(
+            status === 429
+              ? 'Search rate limit reached. Wait a moment or use curated/custom tracks.'
+              : 'Search API is unreachable. You can still use curated tracks or add a custom song.',
+            'error',
+          );
         });
     }, 300);
 
@@ -312,8 +323,9 @@ export function SearchBar({
                   >
                     {item.thumbUrl ? (
                       <img
-                        src={item.thumbUrl}
+                        src={proxifyImageUrl(item.thumbUrl)}
                         alt=""
+                        crossOrigin="anonymous"
                         referrerPolicy="no-referrer"
                         className="w-10 h-10 rounded-lg object-cover shrink-0 bg-[#0B0B0C]"
                       />
