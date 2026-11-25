@@ -1,0 +1,6 @@
+{
+  "name": "Melodra",
+  "description": "Print-ready music poster generator. Pick a song, customize studio tokens, and export high-resolution artwork.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
